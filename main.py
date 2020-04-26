@@ -1,85 +1,112 @@
 '''MAIN DRIVER'''
-import sys
+
+
 import pygame as py
+import time
 
-from variables import *
-from DFS import *
-
-
-def initializeGrid(graph):
-    for y in range(HEIGHT):
-        graph[y] = ['o' for x in range(WIDTH)]
-
-    graph[STARTX][STARTY] = 's'
-    graph[ENDY][ENDX] = 'e'
-
-def findBoxIndex(mousex, mousey, graph):
-    boxx = int(((mousex*WIDTH)/DISPLAY_WIDTH))*(graph.cellsize_x)
-    boxy = int(((mousey*HEIGHT)/DISPLAY_HEIGHT))*(graph.cellsize_y)
-    return boxx, boxy
-
-def findGridIndex(mousex, mousey):
-    x_pos = int(((mousex*WIDTH)/DISPLAY_WIDTH))
-    y_pos = int(((mousey*HEIGHT)/DISPLAY_HEIGHT))
-    return x_pos, y_pos
-
-def drawGrid(graph, button, mousex, mousey):
-    boxx, boxy = findBoxIndex(mousex, mousey, graph)
-    x_pos, y_pos = findGridIndex(boxx,boxy)
-    if button == 1:
-        graph.graph[y_pos][x_pos] = 'x'
-    elif button == 3:
-        graph.graph[y_pos][x_pos] = 'o'
-    print(graph.graph)
+from variables import*
+from functions import*
+from pathFinder import *
+from classes import *
 
 def main():
 
     py.init()
     window = py.display.set_mode((DISPLAY_WIDTH, DISPLAY_HEIGHT))
+    py.display.set_caption('Path Finder')
+    font = py.font.Font(BASICFONT, BASICFONTSIZE)
+    smFont = py.font.Font(BASICFONT, 10)
 
-    coordinates = ['o']*HEIGHT
-    initializeGrid(coordinates)
-    graph = Graph(coordinates)
+    start = [0,0]
+    end = [19,19]
+    board = Graph(start, end)
+    pathfinder = Pathfinder(board.graph)
+    noPath = Message("No Solution", 450, BUTTON_HEIGHT+10, font)
 
-    mousex, mousey = py.mouse.get_pos()
-    mouseDown = False
+    clearButton = Button(10, BUTTON_HEIGHT, 80, 80, DARK_RED, RED)
+    pathButton = Button(110, BUTTON_HEIGHT, 80, 80, DARK_BLUE, BLUE)
+    BFS = Button(210, BUTTON_HEIGHT, 80, 80, DARK_GREEN, GREEN)
+
+    clearText = Message("Clear", 50, BUTTON_HEIGHT+30, font)
+    solveText = Message("Solve", 250, BUTTON_HEIGHT+30, font)
+
+    drawing = False
+    noSolution = False
 
     while True:
-        
-        for e in py.event.get():
+        for event in py.event.get():
 
-            if e.type == py.QUIT:
+            if event.type == py.QUIT:
                 py.quit()
                 sys.exit()
 
-            if e.type == py.KEYDOWN:
+            if event.type == py.KEYDOWN:
 
-                if e.key == py.K_SPACE:
-                    graph.DFS()
-
-                if e.key == py.K_RETURN:
-                    initializeGrid(graph.graph)
-                    print(graph.graph)
-
-            elif e.type == py.MOUSEMOTION:
-                mousex, mousey = e.pos
-                boxx, boxy = findBoxIndex(mousex, mousey, graph)
-
-            elif e.type == py.MOUSEBUTTONDOWN:
-                mouseDown = True
-                #print(x_pos , y_pos)
-                button = e.button
-
-            elif e.type == py.MOUSEBUTTONUP:
-                mouseDown = False
+                mousex, mousey = py.mouse.get_pos()
+                boxx = int(mousex/CELLSIZE)
+                boxy = int(mousey/CELLSIZE)
                 
+                if event.key == py.K_SPACE:
+                    start = [boxx,boxy]
+                    board.changeCell(mousex, mousey, 's')
 
-        if(mouseDown):
-            drawGrid(graph, button, mousex, mousey)
+                if event.key == py.K_RETURN:
+                    end = [boxx,boxy]
+                    board.changeCell(mousex, mousey, 'e')
 
-        #graph.DFS()
+            if event.type == py.MOUSEBUTTONDOWN:
+                mousex, mousey = py.mouse.get_pos()
+                boxx = int(mousex/CELLSIZE)
+                boxy = int(mousey/CELLSIZE)
+
+                if event.button == 1:
+                    element = 'x'
+                    drawing = True
+
+                if event.button == 3:
+                   element = 'o'
+                   drawing = True
+
+                if clearButton.hover:
+                    board.clear()
+
+                if pathButton.hover:
+                    board.clearPath()
+                    noSolution = False
+
+                if BFS.hover:
+                    board.clearPath()
+                    path = pathfinder.BFS(start)
+                    if path:
+                        board.addPath(path)
+                        noSolution = False
+
+                    else:
+                        noSolution = True
+
+            if event.type == py.MOUSEBUTTONUP:
+                drawing = False
+
+        mousex, mousey = py.mouse.get_pos()
+
+        if drawing:
+            board.changeCell(mousex, mousey, element)
+
+        pathfinder.graph = board.graph
         window.fill(WHITE)
-        graph.drawGraph(window, boxx, boxy)
+
+        if noSolution:
+            noPath.display(window)
+
+        #BUTTONS
+        clearButton.drawButton(mousex, mousey, window)
+        pathButton.drawButton(mousex, mousey, window)
+        BFS.drawButton(mousex, mousey, window)
+        clearText.display(window)
+        solveText.display(window)
+        
+    
+        board.draw(window)
         py.display.update()
 
 
